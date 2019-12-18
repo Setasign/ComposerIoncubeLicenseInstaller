@@ -30,6 +30,7 @@ class InstallerPlugin implements PluginInterface
             $licensePackagesGroupedByMainPackage[$mainPackage][] = $package;
         }
 
+        $installationManager = $event->getComposer()->getInstallationManager();
         foreach ($event->getOperations() as $operation) {
             /**
              * @var OperationInterface $operation
@@ -42,20 +43,29 @@ class InstallerPlugin implements PluginInterface
                 continue;
             }
             $packageName = $package->getName();
-            $targetDirectory = $package->getTargetDir();
-
             if (!array_key_exists($packageName, $licensePackagesGroupedByMainPackage)) {
                 // package doesn't have a license
                 continue;
             }
 
+            $targetDirectory = $installationManager->getInstallPath($package);
             foreach ($licensePackagesGroupedByMainPackage[$packageName] as $license) {
                 /**
                  * @var PackageInterface $license
                  */
-                $directory = $license->getTargetDir();
-                foreach (glob($directory . DIRECTORY_SEPARATOR . '*.icl') as $licenseFile) {
-                    copy($licenseFile, $targetDirectory);
+                $directory = $installationManager->getInstallPath($license);
+                if ($directory === null || !is_dir($directory)) {
+                    continue;
+                }
+
+                foreach (new \DirectoryIterator($directory) as $fileInfo) {
+                    /**
+                     * @var \SplFileInfo $fileInfo
+                     */
+                    if ($fileInfo->isDir() || strtolower($fileInfo->getExtension()) !== 'icl') {
+                        continue;
+                    }
+                    copy($fileInfo->getPath(), $targetDirectory . '/' . $fileInfo->getFilename());
                 }
             }
         }
