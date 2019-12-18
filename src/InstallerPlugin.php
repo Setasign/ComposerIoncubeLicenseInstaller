@@ -26,8 +26,10 @@ class InstallerPlugin implements PluginInterface
     {
         $licensePackagesGroupedByMainPackage = [];
         foreach ($this->lookForIoncubeLicenses($event->getInstalledRepo()) as $package) {
-            $mainPackage = $package->getExtra()['mainPackage'];
-            $licensePackagesGroupedByMainPackage[$mainPackage][] = $package;
+            $licenseValidFor = $package->getExtra()['licenseValidFor'];
+            foreach ($licenseValidFor as $validFor) {
+                $licensePackagesGroupedByMainPackage[$validFor][] = $package;
+            }
         }
 
         $installationManager = $event->getComposer()->getInstallationManager();
@@ -65,7 +67,7 @@ class InstallerPlugin implements PluginInterface
                     if ($fileInfo->isDir() || strtolower($fileInfo->getExtension()) !== 'icl') {
                         continue;
                     }
-                    copy($fileInfo->getPath(), $targetDirectory . '/' . $fileInfo->getFilename());
+                    copy($fileInfo->getPathname(), $targetDirectory . '/' . $fileInfo->getFilename());
                 }
             }
         }
@@ -79,7 +81,7 @@ class InstallerPlugin implements PluginInterface
     {
         return array_filter($repository->getPackages(), function (PackageInterface $package) {
             $packageExtra = $package->getExtra();
-            return $package->getType() === 'ioncube-license' && array_key_exists('mainPackage', $packageExtra);
+            return $package->getType() === 'ioncube-license' && array_key_exists('licenseValidFor', $packageExtra);
         });
     }
 }
