@@ -22,9 +22,9 @@ The license has to be a standalone composer package simular to this:
    }
 }
 ```
-On license file(s) has to be on the root level of this package and must have the extension ".icl".
+All license files have to be on the root level of this package and must have the extension ".icl".
 
-The plugin will listen to the eventDispatcher of composer and if one of the packages from "licenseValidFor" is installed or updated it will copy all ".icl" files into the package directory.
+The plugin will listen to the EventDispatcher of composer and if one of the packages from "licenseValidFor" is installed or updated it will copy all ".icl" files into the package directory.
 
 
 
