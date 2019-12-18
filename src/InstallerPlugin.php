@@ -24,51 +24,58 @@ class InstallerPlugin implements PluginInterface
 
     public function onInstallOrUpdate(PackageEvent $event)
     {
-        $licensePackagesGroupedByMainPackage = [];
+        $operation = $event->getOperation();
+        /**
+         * @var OperationInterface $operation
+         */
+        if ($operation instanceof InstallOperation) {
+            $package = $operation->getPackage();
+        } elseif ($operation instanceof UpdateOperation) {
+            $package = $operation->getTargetPackage();
+        } else {
+            return;
+        }
+        $packageName = $package->getName();
+
+        $licensePackages = [];
         foreach ($this->lookForIoncubeLicenses($event->getInstalledRepo()) as $package) {
             $licenseValidFor = $package->getExtra()['licenseValidFor'];
             foreach ($licenseValidFor as $validFor) {
-                $licensePackagesGroupedByMainPackage[$validFor][] = $package;
+                if ($validFor !== $packageName) {
+                    continue;
+                }
+                $licensePackages[] = $package;
             }
         }
 
+        if (count($licensePackages) === 0) {
+            // package doesn't have a license
+            return;
+        }
+
         $installationManager = $event->getComposer()->getInstallationManager();
-        foreach ($event->getOperations() as $operation) {
+        $targetDirectory = $installationManager->getInstallPath($package);
+        if (!is_dir($targetDirectory)) {
+            return;
+        }
+
+        foreach ($licensePackages as $licensePackage) {
             /**
-             * @var OperationInterface $operation
+             * @var PackageInterface $licensePackage
              */
-            if ($operation instanceof InstallOperation) {
-                $package = $operation->getPackage();
-            } elseif ($operation instanceof UpdateOperation) {
-                $package = $operation->getTargetPackage();
-            } else {
-                continue;
-            }
-            $packageName = $package->getName();
-            if (!array_key_exists($packageName, $licensePackagesGroupedByMainPackage)) {
-                // package doesn't have a license
+            $directory = $installationManager->getInstallPath($licensePackage);
+            if ($directory === null || !is_dir($directory)) {
                 continue;
             }
 
-            $targetDirectory = $installationManager->getInstallPath($package);
-            foreach ($licensePackagesGroupedByMainPackage[$packageName] as $license) {
+            foreach (new \DirectoryIterator($directory) as $fileInfo) {
                 /**
-                 * @var PackageInterface $license
+                 * @var \SplFileInfo $fileInfo
                  */
-                $directory = $installationManager->getInstallPath($license);
-                if ($directory === null || !is_dir($directory)) {
+                if ($fileInfo->isDir() || strtolower($fileInfo->getExtension()) !== 'icl') {
                     continue;
                 }
-
-                foreach (new \DirectoryIterator($directory) as $fileInfo) {
-                    /**
-                     * @var \SplFileInfo $fileInfo
-                     */
-                    if ($fileInfo->isDir() || strtolower($fileInfo->getExtension()) !== 'icl') {
-                        continue;
-                    }
-                    copy($fileInfo->getPathname(), $targetDirectory . '/' . $fileInfo->getFilename());
-                }
+                copy($fileInfo->getPathname(), $targetDirectory . '/' . $fileInfo->getFilename());
             }
         }
     }
