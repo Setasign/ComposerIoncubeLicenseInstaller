@@ -10,18 +10,14 @@ The license has to be a standalone composer package simular to this:
 ```composer
 { 
    "type":"ioncube-license",
-   "name":"setasign/setapdf-core_ioncube_license",
+   "name":"your-vendor/your-encoded-package-license",
    "license":"proprietary",
    "require":{ 
       "setasign/composer-ioncube-license-installer":"*"
    },
    "extra":{ 
       "licenseValidFor":[ 
-         "setasign/setapdf-core_ioncube_php5",
-         "setasign/setapdf-core_ioncube_php5.3",
-         "setasign/setapdf-core_ioncube_php5.4",
-         "setasign/setapdf-core_ioncube_php5.6",
-         "setasign/setapdf-core_ioncube_php7.1"
+         "your-vendor/your-encoded-package"
       ]
    }
 }
@@ -33,4 +29,4 @@ The plugin will listen to the eventDispatcher of composer and if one of the pack
 
 
 ## License
-Monolog is licensed under the MIT License - see the LICENSE file for details
+ComposerIoncubeLicenseInstaller is licensed under the MIT License - see the LICENSE file for details
