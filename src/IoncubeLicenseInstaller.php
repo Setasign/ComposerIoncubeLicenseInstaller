@@ -22,11 +22,11 @@ class IoncubeLicenseInstaller extends LibraryInstaller
 
     public function getInstallPath(PackageInterface $package)
     {
-        return parent::getInstallPath($package) . '/..';
+        return dirname(parent::getInstallPath($package));
     }
 
     protected function getPackageBasePath(PackageInterface $package)
     {
-        return parent::getPackageBasePath($package) . '/..';
+        return dirname(parent::getPackageBasePath($package));
     }
 }
