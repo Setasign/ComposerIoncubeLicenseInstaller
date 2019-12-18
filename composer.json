@@ -2,7 +2,7 @@
     "name": "setasign/composer-ioncube-license-installer",
     "type": "composer-plugin",
     "description": "Installer plugin for ioncube licenses",
-    "license": "proprietary",
+    "license": "MIT",
 
     "require": {
         "php": "^5.4 || ^7.0",
