@@ -6,7 +6,7 @@ The composer ioncube license installer is a plugin for [composer](https://getcom
 
 
 ## How does it work?
-The license has to be a standalone composer package simular to this:
+The license has to be a standalone composer package similar to this:
 ```composer
 { 
    "type":"ioncube-license",
