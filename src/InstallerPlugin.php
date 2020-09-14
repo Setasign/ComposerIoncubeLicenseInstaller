@@ -38,7 +38,7 @@ class InstallerPlugin implements PluginInterface
         $packageName = $package->getName();
 
         $licensePackages = [];
-        foreach ($this->lookForIoncubeLicenses($event->getInstalledRepo()) as $licensePackage) {
+        foreach ($this->lookForIoncubeLicenses($event->getLocalRepo()) as $licensePackage) {
             foreach ($licensePackage->getExtra()['licenseValidFor'] as $validFor) {
                 if ($validFor !== $packageName) {
                     continue;
