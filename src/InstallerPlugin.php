@@ -39,8 +39,7 @@ class InstallerPlugin implements PluginInterface
 
         $licensePackages = [];
         foreach ($this->lookForIoncubeLicenses($event->getInstalledRepo()) as $licensePackage) {
-            $licenseValidFor = $licensePackage->getExtra()['licenseValidFor'];
-            foreach ($licenseValidFor as $validFor) {
+            foreach ($licensePackage->getExtra()['licenseValidFor'] as $validFor) {
                 if ($validFor !== $packageName) {
                     continue;
                 }
@@ -90,5 +89,13 @@ class InstallerPlugin implements PluginInterface
             $packageExtra = $package->getExtra();
             return $package->getType() === 'ioncube-license' && array_key_exists('licenseValidFor', $packageExtra);
         });
+    }
+
+    public function deactivate(Composer $composer, IOInterface $io)
+    {
+    }
+
+    public function uninstall(Composer $composer, IOInterface $io)
+    {
     }
 }
