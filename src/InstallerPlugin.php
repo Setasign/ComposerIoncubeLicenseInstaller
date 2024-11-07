@@ -6,6 +6,7 @@ use Composer\Composer;
 use Composer\DependencyResolver\Operation\InstallOperation;
 use Composer\DependencyResolver\Operation\OperationInterface;
 use Composer\DependencyResolver\Operation\UpdateOperation;
+use Composer\Installer\InstallationManager;
 use Composer\Installer\PackageEvent;
 use Composer\Installer\PackageEvents;
 use Composer\IO\IOInterface;
@@ -35,15 +36,68 @@ class InstallerPlugin implements PluginInterface
         } else {
             return;
         }
-        $packageName = $package->getName();
+
+        if ($package->getType() === 'ioncube-license') {
+            // if a license was installed - copy all license files to all related packages
+            $this->installLicenseInAllRelatedPackages(
+                $event->getComposer()->getInstallationManager(),
+                $event->getLocalRepo(),
+                $package
+            );
+        } else {
+            // if a non license was installed - check whether this package requires a license and copy all required
+            // licenses into the package
+            $this->installAllLicenseInPackage(
+                $event->getComposer()->getInstallationManager(),
+                $event->getLocalRepo(),
+                $package
+            );
+        }
+    }
+
+    protected function installLicenseInAllRelatedPackages(
+        InstallationManager $installationManager,
+        RepositoryInterface $localRepo,
+        PackageInterface $licensePackage
+    )
+    {
+        $packageExtra = $licensePackage->getExtra();
+        if (!array_key_exists('licenseValidFor', $packageExtra)) {
+            // missing licenseValidFor entry in license
+            return;
+        }
+        $licenseValidFor = $packageExtra['licenseValidFor'];
+
+        $targetPackages = [];
+        foreach ($licenseValidFor as $validFor) {
+            foreach ($localRepo->findPackages($validFor) as $package) {
+                $targetPackages[] = $package;
+            }
+        }
+
+        if (count($targetPackages) === 0) {
+            // license isn't used
+            return;
+        }
+
+        foreach ($targetPackages as $targetPackage) {
+            $this->installLicenseInPackage($installationManager, $licensePackage, $targetPackage);
+        }
+    }
+
+    protected function installAllLicenseInPackage(
+        InstallationManager $installationManager,
+        RepositoryInterface $localRepo,
+        PackageInterface $targetPackage
+    ) {
+        $installingPackageName = $targetPackage->getName();
 
         $licensePackages = [];
-        foreach ($this->lookForIoncubeLicenses($event->getLocalRepo()) as $licensePackage) {
+        foreach ($this->lookForIoncubeLicenses($localRepo) as $licensePackage) {
             foreach ($licensePackage->getExtra()['licenseValidFor'] as $validFor) {
-                if ($validFor !== $packageName) {
-                    continue;
+                if ($validFor === $installingPackageName) {
+                    $licensePackages[] = $licensePackage;
                 }
-                $licensePackages[] = $licensePackage;
             }
         }
 
@@ -52,30 +106,35 @@ class InstallerPlugin implements PluginInterface
             return;
         }
 
-        $installationManager = $event->getComposer()->getInstallationManager();
-        $targetDirectory = $installationManager->getInstallPath($package);
-        if (!is_dir($targetDirectory)) {
+        foreach ($licensePackages as $licensePackage) {
+            $this->installLicenseInPackage($installationManager, $licensePackage, $targetPackage);
+        }
+    }
+
+    protected function installLicenseInPackage(
+        InstallationManager $installationManager,
+        PackageInterface $licensePackage,
+        PackageInterface $targetPackage
+    ) {
+
+        $sourceDirectory = $installationManager->getInstallPath($licensePackage);
+        if ($sourceDirectory === null || !is_dir($sourceDirectory)) {
             return;
         }
 
-        foreach ($licensePackages as $licensePackage) {
+        $targetDirectory = $installationManager->getInstallPath($targetPackage);
+        if ($targetDirectory === null || !is_dir($targetDirectory)) {
+            return;
+        }
+
+        foreach (new \DirectoryIterator($sourceDirectory) as $fileInfo) {
             /**
-             * @var PackageInterface $licensePackage
+             * @var \SplFileInfo $fileInfo
              */
-            $directory = $installationManager->getInstallPath($licensePackage);
-            if ($directory === null || !is_dir($directory)) {
+            if ($fileInfo->isDir() || strtolower($fileInfo->getExtension()) !== 'icl') {
                 continue;
             }
-
-            foreach (new \DirectoryIterator($directory) as $fileInfo) {
-                /**
-                 * @var \SplFileInfo $fileInfo
-                 */
-                if ($fileInfo->isDir() || strtolower($fileInfo->getExtension()) !== 'icl') {
-                    continue;
-                }
-                copy($fileInfo->getPathname(), $targetDirectory . '/' . $fileInfo->getFilename());
-            }
+            copy($fileInfo->getPathname(), $targetDirectory . '/' . $fileInfo->getFilename());
         }
     }
 
@@ -86,8 +145,9 @@ class InstallerPlugin implements PluginInterface
     protected function lookForIoncubeLicenses(RepositoryInterface $repository)
     {
         return array_filter($repository->getPackages(), function (PackageInterface $package) {
-            $packageExtra = $package->getExtra();
-            return $package->getType() === 'ioncube-license' && array_key_exists('licenseValidFor', $packageExtra);
+            return (
+                $package->getType() === 'ioncube-license' && array_key_exists('licenseValidFor', $package->getExtra())
+            );
         });
     }
 
