@@ -16,6 +16,8 @@ use Composer\Repository\RepositoryInterface;
 
 class InstallerPlugin implements PluginInterface
 {
+    private $ioncubeLicensesMemoize = null;
+
     public function activate(Composer $composer, IOInterface $io)
     {
         $eventDispatcher = $composer->getEventDispatcher();
@@ -47,7 +49,7 @@ class InstallerPlugin implements PluginInterface
         } else {
             // if a non license was installed - check whether this package requires a license and copy all required
             // licenses into the package
-            $this->installAllLicenseInPackage(
+            $this->installAllLicensesInPackage(
                 $event->getComposer()->getInstallationManager(),
                 $event->getLocalRepo(),
                 $package
@@ -85,7 +87,7 @@ class InstallerPlugin implements PluginInterface
         }
     }
 
-    protected function installAllLicenseInPackage(
+    protected function installAllLicensesInPackage(
         InstallationManager $installationManager,
         RepositoryInterface $localRepo,
         PackageInterface $targetPackage
@@ -134,6 +136,12 @@ class InstallerPlugin implements PluginInterface
             if ($fileInfo->isDir() || strtolower($fileInfo->getExtension()) !== 'icl') {
                 continue;
             }
+            $source = $fileInfo->getPathname();
+            $target = $targetDirectory . '/' . $fileInfo->getFilename();
+            if (file_exists($target) && \hash_file('md5', $source) === \hash_file('md5', $target)) {
+                continue;
+            }
+
             copy($fileInfo->getPathname(), $targetDirectory . '/' . $fileInfo->getFilename());
         }
     }
